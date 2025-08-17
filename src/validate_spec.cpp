@@ -33,7 +33,7 @@ void validate_spec(const MshSpec& spec)
         ASSERT(block.tags.size() == block.num_nodes_in_block, "Inconsist number of node tags.");
         ASSERT(size_t(tag_zip.extent(0)) == block.num_nodes_in_block,
             "zipper Tag wrong number of nodes in block");
-        ASSERT(size_t(tag_zip.extent(0)) == block.num_nodes_in_block,
+        ASSERT(size_t(data_zip.extent(1)) == block.num_nodes_in_block,
             "zipper data wrong number of nodes in block");
         for (size_t j = 0; j < block.num_nodes_in_block; j++) {
             ASSERT(block.tags[j] >= nodes.min_node_tag, "Node tag < min node tag.");
@@ -42,13 +42,13 @@ void validate_spec(const MshSpec& spec)
         }
 
         if (block.parametric > 0) {
-            ASSERT(size_t(tag_zip.extent(1)) == static_cast<size_t>(3 + block.entity_dim),
-                "zipper data wrong number of cols ");
+            ASSERT(size_t(data_zip.extent(0)) == static_cast<size_t>(3 + block.entity_dim),
+                "zipper data wrong number of cols  with projection > 0");
             ASSERT(block.data.size() ==
                        block.num_nodes_in_block * static_cast<size_t>(3 + block.entity_dim),
                 "Invalide node data size.");
         } else {
-            ASSERT(size_t(tag_zip.extent(1)) == 3, "zipper data wrong number of cols ");
+            ASSERT(size_t(data_zip.extent(0)) == 3, "zipper data wrong number of cols ");
             ASSERT(block.data.size() == block.num_nodes_in_block * 3, "Invalid node data size.");
         }
     }

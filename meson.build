@@ -87,13 +87,17 @@ if get_option('testing')
   catch2_with_main_dep = dependency('catch2-with-main')
   
   
-  test_defines = {'MSHIO_DATA_DIR':'${PROJECT_SOURCE_DIR}/data'}
-  test_sources = glob('{}tests/*.cpp')
+  #test_defines = {'MSHIO_DATA_DIR':'${PROJECT_SOURCE_DIR}/data'}
+  test_defines = ['-DMSHIO_DATA_DIR="' + meson.project_source_root() + '/data"']
+  test_sources = [
+    'tests/test_io.cpp',
+    'tests/test_zipper.cpp'
+  ]
   
   # TODO: replace my_lib with the own lib
-  test_mshio = executable('test_mshio', dependencies: [my_lib_dep, catch2_with_main_dep], cpp_defines: test_defines)
+  test_mshio = executable('test_mshio', sources:test_sources, dependencies: [mshio_dep, catch2_with_main_dep], cpp_args: test_defines)
   
-  test('mshio', test_hello_world)
+  test('mshio', test_mshio)
   #if(NOT MSVC)
   #    target_compile_options(test_MshIO PRIVATE -Wconversion -Wall -Werror)
   #else()
