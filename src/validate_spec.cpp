@@ -5,12 +5,12 @@
 
 namespace mshio {
 
-void validate_spec(const MshSpec& spec)
+void validate_spec(const MshSpec & spec)
 {
-    const Nodes& nodes = spec.nodes;
-    const Elements& elements = spec.elements;
+    const Nodes & nodes = spec.nodes;
+    const Elements & elements = spec.elements;
 
-    auto ASSERT = [](bool r, const std::string& msg) {
+    auto ASSERT = [](bool r, const std::string & msg) {
         if (!r) {
             throw CorruptData(msg);
         }
@@ -26,23 +26,25 @@ void validate_spec(const MshSpec& spec)
         elements.min_element_tag <= elements.max_element_tag, "Min element tag > max element tag.");
 
     for (size_t i = 0; i < nodes.num_entity_blocks; i++) {
-        const NodeBlock& block = nodes.entity_blocks[i];
-        auto tag_zip = block.tags_as_zipper();
-        auto data_zip = block.data_as_zipper();
+        const NodeBlock & block = nodes.entity_blocks[i];
+        auto tag_zip = block.tags_as_mdspan();
+        auto data_zip = block.data_as_mdspan();
 
         ASSERT(block.tags.size() == block.num_nodes_in_block, "Inconsist number of node tags.");
-        ASSERT(size_t(tag_zip.extent(0)) == block.num_nodes_in_block,
+        ASSERT(size_t(tag_zip.size()) == block.num_nodes_in_block,
             "zipper Tag wrong number of nodes in block");
         ASSERT(size_t(data_zip.extent(1)) == block.num_nodes_in_block,
             "zipper data wrong number of nodes in block");
         for (size_t j = 0; j < block.num_nodes_in_block; j++) {
             ASSERT(block.tags[j] >= nodes.min_node_tag, "Node tag < min node tag.");
             ASSERT(block.tags[j] <= nodes.max_node_tag, "Node tag > max node tag.");
-            ASSERT(block.tags[j] == tag_zip(j), "Zipper tag wrong value.");
+            ASSERT(block.tags[j] == tag_zip[j], "Zipper tag wrong value.");
         }
 
         if (block.parametric > 0) {
             ASSERT(size_t(data_zip.extent(0)) == static_cast<size_t>(3 + block.entity_dim),
+                "zipper data wrong number of rows with projection > 0");
+            ASSERT(size_t(data_zip.extent(1)) == static_cast<size_t>(block.num_nodes_in_block),
                 "zipper data wrong number of cols  with projection > 0");
             ASSERT(block.data.size() ==
                        block.num_nodes_in_block * static_cast<size_t>(3 + block.entity_dim),
@@ -54,7 +56,7 @@ void validate_spec(const MshSpec& spec)
     }
 
     for (size_t i = 0; i < elements.num_entity_blocks; i++) {
-        const ElementBlock& block = elements.entity_blocks[i];
+        const ElementBlock & block = elements.entity_blocks[i];
         const size_t entries_per_element = block.data.size() / block.num_elements_in_block;
         ASSERT(block.data.size() % entries_per_element == 0, "Invalid element data size.");
         for (size_t j = 0; j < block.data.size(); j++) {

@@ -2,16 +2,48 @@
 
 #include <string>
 #include <vector>
-#include <zipper/Matrix.hpp>
-#include <zipper/Vector.hpp>
+
+#if defined(__cpp_lib_mdpsan)
+#include <mdspan>
+namespace mshio {
+using default_layout_policy = std::layout_right;
+template <typename T>
+using default_accessor_policy = std::default_accessor<T>;
+
+template <typename T,
+    typename Extents,
+    typename LayoutPolicy = default_layout_policy,
+    typename AccessorPolicy = default_accessor_policy<T>>
+using mdspan = std::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>;
+} // namespace mshio
+#else
+#include <mdspan/mdspan.hpp>
+#include <span>
+namespace mshio {
+
+using default_layout_policy = MDSPAN_IMPL_STANDARD_NAMESPACE::layout_right;
+template <typename T>
+using default_accessor_policy = MDSPAN_IMPL_STANDARD_NAMESPACE::default_accessor<T>;
+template <typename T,
+    typename Extents,
+    typename LayoutPolicy = default_layout_policy,
+    typename AccessorPolicy = default_accessor_policy<T>>
+using mdspan = MDSPAN_IMPL_STANDARD_NAMESPACE::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>;
+
+template <typename T, T... Extents>
+using extents = MDSPAN_IMPL_STANDARD_NAMESPACE::extents<T, Extents...>;
+} // namespace mshio
+#endif
 
 #include <mshio/MshSpecExt.h>
 
 namespace mshio {
 
-using VectorXs = zipper::Vector<size_t, std::dynamic_extent>;
-using MatrixXXd = zipper::Matrix<double, std::dynamic_extent, std::dynamic_extent>;
-using MatrixXXs = zipper::Matrix<size_t, std::dynamic_extent, std::dynamic_extent>;
+using VectorXs = std::span<const size_t, std::dynamic_extent>;
+using MatrixXXd =
+    mdspan<const double, extents<std::size_t, std::dynamic_extent, std::dynamic_extent>>;
+using MatrixXXs =
+    mdspan<const size_t, extents<std::size_t, std::dynamic_extent, std::dynamic_extent>>;
 
 
 struct MeshFormat
@@ -30,38 +62,16 @@ struct NodeBlock
     std::vector<size_t> tags;
     std::vector<double> data;
 
-    auto tags_as_zipper()
-    {
-        return VectorXs::span_type(
-            std::span(tags), zipper::create_dextents(zipper::index_type(num_nodes_in_block)));
-    }
-    auto tags_as_zipper() const
-    {
-        return VectorXs::const_span_type(
-            std::span(tags), zipper::create_dextents(zipper::index_type(num_nodes_in_block)));
-    }
-    auto data_as_zipper() -> MatrixXXd::span_type
+    auto tags_as_mdspan() const { return VectorXs(tags.data(), num_nodes_in_block); }
+    auto data_as_mdspan() const -> MatrixXXd
     {
         if (parametric > 0) {
-            return MatrixXXd::span_type(std::span(data),
-                zipper::create_dextents(
-                    zipper::index_type(3 + entity_dim), zipper::index_type(num_nodes_in_block)));
+            return MatrixXXd(data.data(),
+                extents<size_t, std::dynamic_extent, std::dynamic_extent>(
+                    3 + entity_dim, num_nodes_in_block));
         } else {
-            return MatrixXXd::span_type(std::span(data),
-                zipper::create_dextents(
-                    zipper::index_type(3), zipper::index_type(num_nodes_in_block)));
-        }
-    }
-    auto data_as_zipper() const -> MatrixXXd::const_span_type
-    {
-        if (parametric > 0) {
-            return MatrixXXd::const_span_type(std::span(data),
-                zipper::create_dextents(
-                    zipper::index_type(3 + entity_dim), zipper::index_type(num_nodes_in_block)));
-        } else {
-            return MatrixXXd::const_span_type(std::span(data),
-                zipper::create_dextents(
-                    zipper::index_type(3), zipper::index_type(num_nodes_in_block)));
+            return MatrixXXd(data.data(),
+                extents<size_t, std::dynamic_extent, std::dynamic_extent>(3, num_nodes_in_block));
         }
     }
 };
@@ -82,17 +92,11 @@ struct ElementBlock
     int element_type = 0;
     size_t num_elements_in_block = 0;
     std::vector<size_t> data;
-    auto data_as_zipper()
+    auto data_as_mdspan() const
     {
-        return MatrixXXs::span_type(std::span(data),
-            zipper::create_dextents(
-                zipper::index_type(entity_dim), zipper::index_type(num_elements_in_block)));
-    }
-    auto data_as_zipper() const
-    {
-        return MatrixXXs::const_span_type(std::span(data),
-            zipper::create_dextents(
-                zipper::index_type(entity_dim), zipper::index_type(num_elements_in_block)));
+        return MatrixXXs(data.data(),
+            extents<size_t, std::dynamic_extent, std::dynamic_extent>(
+                entity_dim, num_elements_in_block));
     }
 };
 
